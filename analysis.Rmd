@@ -1,0 +1,110 @@
+---
+title: "Website Redesign Analysis"
+author: "Nikhil Devireddy"
+date: "2025-09-28"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(colorfindr)
+library(webshot2)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+
+dat <- read.csv("homework3_data.csv")
+```
+
+## Recommendation
+
+My recommendation is that the company should commit to redesigning the web site based on the criteria for success that they laid out, and my reasoning lies in the sales analysis below.
+
+## Palette
+
+```{r}
+
+url <- "https://www.mclaren.com/racing/formula-1/"   # change to any webpage you want
+shot <- "webpage_shot.png"
+
+webshot(url, file = shot, vwidth = 1600, vheight = 1000, cliprect = "viewport")
+
+cols <- get_colors(shot)
+
+make_palette(cols)
+
+top_hex <- cols %>%
+  arrange(desc(col_freq)) %>%
+  pull(col_hex) %>%
+  unique()
+
+cat_pal <- c("Current"="#53565A", "Redesign"="#FF8000")
+
+
+
+```
+
+## Graphical Evidence
+
+```{r}
+
+dat <- dat %>%
+  mutate(design = factor(design, levels = c(0,1), labels = c("Current","Redesign")))
+
+ggplot(dat, aes(x = design, y = sales, fill = design)) +
+  geom_boxplot(width = 0.25, outlier.shape = 16, outlier.alpha = 0.35) +
+  scale_fill_manual(values = cat_pal) +
+  labs(x = NULL, y = "Sales ($)", fill = NULL, title = "Sales by Website Design") +
+  theme_minimal()
+
+ggplot(dat, aes(x = sales, fill = design, color = design)) +
+  geom_density(alpha = 0.35, linewidth = 0.6) +
+  scale_fill_manual(values = cat_pal) +
+  scale_color_manual(values = cat_pal) +
+  labs(title = "Sales Distribution by Website Design",
+       x = "Sales ($)", y = "Density", fill = "Design", color = "Design") +
+  theme_minimal()
+
+
+```
+
+
+Regarding the distribution of sales for the current design, the distribution clusters more tightly around the $30–34 range, with the peak density near around $32. For the redesign, the sales distribution shifts noticeably to the right. The peak is closer to $35–36, and the curve stretches further into higher values of $40 and more. This indicates that under the redesigned site, customers are making larger purchases on average, and the spread is wider (more variation in sales amounts). The redesign clearly generates more transactions in the upper-end tail of sales.
+
+
+
+## Other supporting evidence
+```{r}
+cur <- subset(dat, design == "Current")$sales
+new <- subset(dat, design == "Redesign")$sales
+
+mean_current  <- mean(cur)
+mean_redesign <- mean(new)
+obs_diff    <- mean_redesign - mean_current
+
+mean_current; mean_redesign; obs_diff
+
+tt <- t.test(new, cur, alternative = "greater", mu = 1.80, var.equal = FALSE)
+tt
+```
+
+
+## Estimate of sales change from redesign
+
+The **observed difference in mean sales** between the redesign and current site is 
+`r round(mean(new) - mean(cur), 2)` dollars per customer 
+(Redesign: `r round(mean(new), 2)` vs Current: `r round(mean(cur), 2)`). 
+A Welch two-sample t-test indicates this lift is highly statistically significant 
+(one-sided *p* = `r t.test(new, cur, alternative = "greater", var.equal = FALSE)$p.value`). 
+The corresponding 95% confidence interval for the mean difference is 
+[`r round(t.test(new, cur, var.equal = FALSE)$conf.int[1], 2)`, 
+ `r round(t.test(new, cur, var.equal = FALSE)$conf.int[2], 2)`], 
+which **does not contain 1.80**. Therefore, the evidence indicates that the expected increase in sales 
+**exceeds the company’s \$1.80 threshold** with high confidence.
+
+## Alternate Statement
+
+The observed difference in the data reflects seasonal demand or short-term promotions during the partial redesign window. In a normal period without those boosts, the true mean difference would be less than $1.80.
+
